@@ -1,0 +1,56 @@
+Wie brauchen ein eigenes Warenwirtschaftssystem. Zunächt ein eeinfache php basierte WebApplication, perspektivisch soll es aber eine Cloud Anwendung (z.B. AWS) werden.
+Die ANforderungen für die Cloud stehen noch nicht fest, außer, dass die Datenmodel später in die Cloud übernommen wird (mit Daten)
+
+Als Webanwendung werden wir eine MarinaDB10 verwenden, die Webanwendung wird php, html,js basiert sein.
+Die gesamte Implementierung (Code) ist in Englisch, Die Angezeigte Sparche muss gleich zweisprachig (Deutsch & Englisch) erfolgen. Weitere Sprachen optional hinzufügbar. 
+
+Wir brauchen eine Benutzerverwaltung
+- Benutzer haben 1-n Rollen
+- Rollen können an funKtionen gelinkt werden. Der Link beinhaltet (create/update/delete)
+- Jede Einzelanwendung, in unserer implementation jedes x.php file hat einen Funktionscheck (create/update/delete)
+--> Hier bitte state of the Art eine flexible User-Verwaltung erstellen.
+
+Funktiosumfank:
+- Es muss möglich sein Funktionen generell ein- und AUszuschalten
+
+Systembunktion:
+Warenwirtschaftssystem
+Wir  brauchen ein komplettes Warenwirtschaftsystem mit diesen funKtionen
+- Kundenstamm
+    - Privatkunden
+    - B2B Kunden
+- Lieferantenstamm
+- Arktikelstamm
+    - Artikel Preisfindung
+        - Stückbasiert
+        - 1-n Dimensionen bAsiert (länge/breite/höhe/Farbe/material/etc...)
+        - Artikelvarianten (Grundsätzlich der gleiche ARtikel, aber 1-n Dimensionen sind anders)
+    - Artikelbundle (Klammer um mehrere Artikel)
+    - Produkt (Mehere 1-n ArtikelBundle)
+    - Moderne Preisfindung
+    - Werbekampangen, Discounts, special offers, Saison 
+- Kostenstellen (Z.B. Ein Fahrzeug), incl. Kostenaufteilung auf 1-n Kostenstellen. Automatische Kostenverteilung auf Kostenträger/Ergebnisträger. Kostenstellenbogen!
+- Kostenträger (z.B. ein Artikel) incl. Kostenaufteilung auf 1-n  Ergebnisträger und Automatische Kostenverteilung. Kostenträgerbogen
+- Ergebnisträger (Artikel, Kunden, Produkte, etc. ). Ergebnisträgerbogen!
+    --> Für die Kostenrechnung bitte Best praktice prüfen!!!
+- Belege incl. beliebige Belegübernahme. Hier bitte best praktice prüfen und keine alten Konmzepte übernehmen. Alle Belege müssen die 
+    Anforderungen für den Beleglosen Austausch erfüllen). Wir brauchen flexible Belegnummernkreise (Rechtskonform)
+    - Bestellungen 
+    - Aufträge
+    - Lieferscheine
+    - Rechnungen (Auch europäische eRechnung)
+    - Sammelrechnungen
+    - Barverkauf
+
+Buchhaltung
+Wir brauchen eine Schnittstelle zur Buchhaltung - also wir brauchen unsere eigene Buchhaltung. ggf. nutzen wir als Schnittstelle einen Standart (Datev, etc) um flexibel zu bleiben.
+Hier bitte Best Praktice prüfen
+In der Buchhaltung brauchen wir Offene Posten (Kunden/Lieferanten/Sachkonten(optional))
+Wir Brauchen Kontoauszug bearbeitung und automatischen Abgleich mit Forderungen aus Lieferungen und Leistungen und aus Verbindlichkeiten und  Sachkonten
+
+Wir brauchen Doppelte buchführung, eine GuV eine Bilanz, Geschäftsjahres verwaltung, einen Firmenstamm 
+
+Grundsätzlich brauichen wir ein stabiles Funktiomsmenü-Management und alles um eine einfache Funktionserweiterung in Zukunft sicher zu stellen.
+
+
+--> Shop so lassen, echte Cloud implementation, Kafka communication

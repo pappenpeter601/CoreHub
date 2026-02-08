@@ -1,0 +1,531 @@
+openapi: 3.0.3
+info:
+  title: CoreHub API
+  version: 0.1.0
+servers:
+  - url: https://api.corehub.local/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IfMatch:
+      in: header
+      name: If-Match
+      required: false
+      schema: {type: string}
+      description: ETag for conditional updates.
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema: {type: string}
+      description: Idempotency key for safely retryable POST requests.
+  schemas:
+    Money:
+      type: object
+      properties:
+        amount: {type: number, format: double}
+        currency: {type: string}
+      required: [amount, currency]
+    Address:
+      type: object
+      properties:
+        line1: {type: string}
+        line2: {type: string}
+        postal_code: {type: string}
+        city: {type: string}
+        country: {type: string}
+    LineItem:
+      type: object
+      properties:
+        sku: {type: string}
+        description: {type: string}
+        qty: {type: number, format: double}
+        uom: {type: string}
+        price: {$ref: '#/components/schemas/Money'}
+        tax_code: {type: string}
+      required: [sku, qty]
+    Error:
+      type: object
+      properties:
+        trace_id: {type: string}
+        code: {type: string}
+        message: {type: string}
+        details: {type: object}
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, format: email}
+                password: {type: string, format: password}
+              required: [email, password]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: {type: string}
+                  refresh_token: {type: string}
+                example:
+                  access_token: "eyJ..."
+                  refresh_token: "eyJ..."
+  /auth/magic-link:
+    post:
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, format: email}
+              required: [email]
+      responses:
+        '202': {description: accepted}
+  /auth/verify-magic:
+    post:
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: {type: string}
+              required: [token]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: {type: string}
+  /users:
+    get:
+      tags: [iam]
+      parameters:
+        - in: query
+          name: status
+          schema: {type: string}
+      responses:
+        '200':
+          description: list users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string, format: uuid}
+                        email: {type: string}
+                        status: {type: string}
+                  next_cursor: {type: string}
+    post:
+      tags: [iam]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, format: email}
+                password: {type: string}
+                roles: {type: array, items: {type: string}}
+              required: [email]
+      responses:
+        '201': {description: created}
+  /roles:
+    get:
+      tags: [iam]
+      responses:
+        '200': {description: list roles}
+    post:
+      tags: [iam]
+      responses:
+        '201': {description: created}
+  /articles:
+    get:
+      tags: [catalog]
+      responses:
+        '200': {description: list articles}
+    post:
+      tags: [catalog]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+              required: [name]
+      responses:
+        '201': {description: created}
+  /variants:
+    get:
+      tags: [catalog]
+      responses:
+        '200': {description: list variants}
+    post:
+      tags: [catalog]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sku: {type: string}
+                name: {type: string}
+                uom: {type: string}
+                attrs: {type: object}
+              required: [sku, name, uom]
+      responses:
+        '201': {description: created}
+  /articles/{id}/variants:
+    post:
+      tags: [catalog]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variant_id: {type: string}
+                base_price: {$ref: '#/components/schemas/Money'}
+              required: [variant_id]
+      responses:
+        '201': {description: created}
+  /pricing/simulate:
+    post:
+      tags: [pricing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items: {type: array, items: {$ref: '#/components/schemas/LineItem'}}
+                customer_id: {type: string}
+                shop_id: {type: string}
+                date: {type: string, format: date}
+      responses:
+        '200': {description: pricing result}
+        '400': {description: invalid input}
+        '200':
+          description: pricing result
+          content:
+            application/json:
+              example:
+                items:
+                  - line_id: "L1"
+                    sku: "ART-001"
+                    qty: 2
+                    price: {amount: 10.0, currency: "EUR"}
+                    tax_code: "DE_STD"
+                totals:
+                  net: 20.0
+                  tax: 3.8
+                  gross: 23.8
+  /orders:
+    get:
+      tags: [orders]
+      responses:
+        '200': {description: list orders}
+    post:
+      tags: [orders]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_id: {type: string}
+                currency: {type: string}
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      article_variant_id: {type: string}
+                      qty: {type: number}
+                      price: {$ref: '#/components/schemas/Money'}
+      responses:
+        '201': {description: created}
+        '409': {description: concurrency or idempotency conflict}
+        '201':
+          description: created
+          content:
+            application/json:
+              example:
+                id: "ord-123"
+                status: "draft"
+                currency: "EUR"
+                totals: {net: 100, tax: 19, gross: 119}
+
+  /orders/{id}:
+    get:
+      tags: [orders]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: order detail}
+        '200':
+          description: order detail
+          headers:
+            ETag:
+              schema: {type: string}
+              description: Version tag for concurrency control.
+          content:
+            application/json:
+              example:
+                id: "ord-123"
+                status: "confirmed"
+                customer_id: "cust-1"
+                currency: "EUR"
+                lines:
+                  - line_id: "L1"
+                    article_variant_id: "av-1"
+                    qty: 2
+                    price: {amount: 10, currency: "EUR"}
+  /orders/{id}/confirm:
+    post:
+      tags: [orders]
+      responses:
+        '200': {description: confirmed}
+        '409': {description: invalid state transition}
+  /orders/{id}/deliver:
+    post:
+      tags: [orders]
+      responses:
+        '200': {description: delivered}
+        '409': {description: invalid state transition}
+  /invoices:
+    get:
+      tags: [invoice]
+      responses:
+        '200': {description: list invoices}
+    post:
+      tags: [invoice]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sources:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      source_type: {type: string, enum: [order, delivery, invoice, credit_note, return]}
+                      source_id: {type: string}
+                  description: Source documents to aggregate into the invoice.
+      responses:
+        '201': {description: created}
+
+  /invoices/{id}:
+    get:
+      tags: [invoice]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: invoice detail}
+        '200':
+          description: invoice detail
+          headers:
+            ETag:
+              schema: {type: string}
+          content:
+            application/json:
+              example:
+                id: "inv-123"
+                invoice_no: "2026-0001"
+                status: "posted"
+                currency: "EUR"
+                totals: {net: 100, tax: 19, gross: 119}
+                pdf_uri: "https://.../inv-123.pdf"
+  /invoices/{id}/pdf:
+    post:
+      tags: [invoice]
+      responses:
+        '200': {description: rendered}
+        '404': {description: invoice not found}
+  /invoices/{id}/issue:
+    post:
+      tags: [invoice]
+      responses:
+        '200': {description: issued and auto-posted to GL}
+        '409': {description: invalid state transition}
+  /credit-notes:
+    get:
+      tags: [invoice]
+      responses:
+        '200': {description: list credit notes}
+    post:
+      tags: [invoice]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invoice_id: {type: string}
+                reason: {type: string}
+      responses:
+        '201': {description: created}
+  /credit-notes/{id}/pdf:
+    post:
+      tags: [invoice]
+      responses:
+        '200': {description: rendered}
+        '404': {description: credit note not found}
+  /credit-notes/{id}/post:
+    post:
+      tags: [invoice]
+      responses:
+        '200': {description: posted to GL}
+        '409': {description: already posted or invalid state}
+  /number-ranges:
+    get:
+      tags: [invoice]
+      parameters:
+        - in: query
+          name: doc_type
+          schema: {type: string}
+        - in: query
+          name: fiscal_year
+          schema: {type: integer}
+        - in: query
+          name: legal_entity_id
+          schema: {type: string}
+      responses:
+        '200': {description: list number ranges}
+    post:
+      tags: [invoice]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doc_type: {type: string}
+                legal_entity_id: {type: string}
+                fiscal_year: {type: integer}
+                prefix: {type: string}
+                suffix: {type: string}
+                next_number: {type: integer}
+                min_length: {type: integer}
+      responses:
+        '201': {description: created}
+  /bank-statements/import:
+    post:
+      tags: [banking]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: {type: string, format: binary}
+                format: {type: string, enum: [csv, mt940]}
+      responses:
+        '202': {description: imported}
+        '400': {description: invalid file}
+  /bank-tx/{id}/match:
+    post:
+      tags: [banking]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                open_item_id: {type: string}
+                confidence: {type: number}
+      responses:
+        '200': {description: matched}
+        '404': {description: bank tx not found}
+  /journal-entries:
+    post:
+      tags: [finance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doc_type: {type: string}
+                doc_id: {type: string}
+                date: {type: string, format: date}
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      account_id: {type: string}
+                      debit: {type: number}
+                      credit: {type: number}
+      responses:
+        '201': {description: posted}
+  /templates:
+    post:
+      tags: [comms]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type: {type: string, enum: [email, pdf]}
+                locale: {type: string}
+                version: {type: integer}
+                body: {type: string}
+      responses:
+        '201': {description: created}
